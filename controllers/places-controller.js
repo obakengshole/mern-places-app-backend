@@ -71,7 +71,6 @@ const createPlace = (req, res, next) => {
 
 const updatePlace = (req, res, next) => {
     const errors = validationResult(req)
-    console.log(errors);
     if (!errors.isEmpty()) {
         throw new HttpError('Invalid input passed.', 422)
     }
