@@ -2,6 +2,9 @@ const uuid = require('uuid/v4')
 const { validationResult } = require('express-validator')
 const HttpError = require('../models/http-error')
 
+// const getCoordsForAddress = require('../util/location')
+const Place = require('../models/place')
+
 let DUMMY_PLACES = [
     {
         id: 'p1',
@@ -17,18 +20,24 @@ let DUMMY_PLACES = [
     }
 ]
 
-const getPlaceById = (req, res, next) => {
+const getPlaceById = async (req, res, next) => {
     const placeId = req.params.placeId
-    const place = DUMMY_PLACES.find(place => {
-        return place.id === placeId
-    })
+
+    let place
+    try {
+        place = await Place.findById(placeId)
+    } catch (err) {
+        const error = new HttpError('Could not find place.', 500)
+        return next(error)
+    }
 
     if (!place) {
         // return res.status(404).json({ message: 'Could not find a place for the provided id.' })
-        throw new HttpError('Could not find a place for the provided id.', 404)
+        const error = new HttpError('Could not find a place for the provided id.', 404)
+        return next(error)
     }
 
-    res.json({ place })
+    res.json({ place: place.toObject({ getters: true }) })
 }
 
 const getPlacesByUserId = (req, res, next) => {
@@ -47,24 +56,32 @@ const getPlacesByUserId = (req, res, next) => {
     res.json({ places })
 }
 
-const createPlace = (req, res, next) => {
+const createPlace = async (req, res, next) => {
     const errors = validationResult(req)
     console.log(errors);
     if (!errors.isEmpty()) {
         throw new HttpError('Invalid input passed.', 422)
     }
 
-    const { title, description, coordinates, address, creator} = req.body
-    const createdPlace = {
-        id: uuid(),
+    const { title, description, coordinates, address, creator } = req.body
+    const createdPlace = new Place({
         title,
         description,
-        location: coordinates,
         address,
+        location: coordinates,
+        image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/NYC_Empire_State_Building.jpg/640px-NYC_Empire_State_Building.jpg',
         creator
-    }
+    })
 
-    DUMMY_PLACES.push(createdPlace) // unshift(createdPlace)
+    // DUMMY_PLACES.push(createdPlace) // unshift(createdPlace)
+    try {
+        console.log(createdPlace);
+        await createdPlace.save()
+    } catch (err) {
+        const error = new HttpError('Creating place failed, please try again.', 500)
+        console.log(err);
+        return next(error)
+    }
 
     res.status(201).json({ place: createdPlace }) // status code setnt if something was created on the server
 }
