@@ -15,7 +15,15 @@ const DUMMY_USERS = [
 ]
 
 const getUsers = (req, res, next) => {
-    res.json({ users: DUMMY_USERS })
+    let users
+    try {
+        users = await User.find({}, '-password')
+    } catch (err) {
+        return next(
+            new HttpError('Failed to fetch users, please try again later.', 500)
+        )
+    }
+    res.json({ users: users.map(user => user.toObject({ getters: true })) })
 }
 
 const signup = async (req, res, next) => {
@@ -26,7 +34,7 @@ const signup = async (req, res, next) => {
         )
     }
 
-    const { name, email, password, places } = req.body
+    const { name, email, password } = req.body
 
     let existingUser
     try {
@@ -47,7 +55,7 @@ const signup = async (req, res, next) => {
         email,
         image: 'https://live.staticflickr.com/7631/26849088292_36fc52ee90_b.jpg',
         password,
-        places
+        places: []
     })
 
     try {
@@ -60,13 +68,21 @@ const signup = async (req, res, next) => {
     res.status(201).json({ user: createdUser.toObject({ getters: true }) })
 }
 
-const login = (req, res, next) => {
+const login = async (req, res, next) => {
     const { email, password } = req.body
 
-    const identifiedUser = DUMMY_USERS.find(user => user.email === email)
-    if (!identifiedUser) {
+    let existingUser
+    try {
+        // find one document matching the criteria in the argument of our method
+        existingUser = await User.findOne({ email: email })
+    } catch (err) {
+        const error = new HttpError('Login failed, please try again later.', 500)
+        return next(error)
+    }
+
+    if (!existingUser || existingUser.password !== password) {
         return next(
-            new HttpError('Could not identify user. Check credentials.', 401)
+            new HttpError('Login failed, invalid credentials.', 401)
         )
     }
 
