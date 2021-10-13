@@ -1,9 +1,11 @@
 const uuid = require('uuid/v4')
 const { validationResult } = require('express-validator')
 const HttpError = require('../models/http-error')
+const mongoose = require('mongoose')
 
 // const getCoordsForAddress = require('../util/location')
 const Place = require('../models/place')
+const User = require('../models/user')
 
 let DUMMY_PLACES = [
     {
@@ -80,10 +82,36 @@ const createPlace = async (req, res, next) => {
         creator
     })
 
+    let user
+    try {
+        user = await User.findById(creator)
+    } catch (err) {
+        return next(
+            new HttpError('Creating place failed, user not found.', 500)
+        )
+    }
+
+    if (!user) {
+        return next(
+            new HttpError('Creating place failed, user id not found.', 404)
+        )
+    }
+
     // DUMMY_PLACES.push(createdPlace) // unshift(createdPlace)
     try {
-        console.log(createdPlace);
-        await createdPlace.save()
+        const session = await mongoose.startSession()
+        session.startTransaction()
+        await createdPlace.save({ session })
+
+        // not the standard push, used by mongoose to establish the connection bt the 2 models
+        // mongoose only adds the places id 
+        user.places.push(createdPlace)
+
+        await user.save({ session })
+
+        // only at this point are changes saved to database, if anything goes wrong in tasks that are part
+        // of the session, all changes will be rolled back by mongodb
+        await session.commitTransaction()
     } catch (err) {
         const error = new HttpError('Creating place failed, please try again.', 500)
         console.log(err);

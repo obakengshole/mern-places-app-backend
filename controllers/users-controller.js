@@ -14,7 +14,7 @@ const DUMMY_USERS = [
     }
 ]
 
-const getUsers = (req, res, next) => {
+const getUsers = async (req, res, next) => {
     let users
     try {
         users = await User.find({}, '-password')
