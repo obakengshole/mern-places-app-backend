@@ -20,7 +20,7 @@ app.use((req, res, next) => {
 })
 
 app.use((error, req, res, next) => {
-    // cjeck if response header has already been sent 
+    // check if response header has already been sent 
     if (res.headerSent) {
         return next(error)
     }

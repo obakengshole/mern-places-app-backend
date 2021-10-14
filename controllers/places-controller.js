@@ -7,21 +7,6 @@ const mongoose = require('mongoose')
 const Place = require('../models/place')
 const User = require('../models/user')
 
-let DUMMY_PLACES = [
-    {
-        id: 'p1',
-        title: 'Empire State Building',
-        description: 'One of the most famous sky scrapers in the world!',
-        imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/NYC_Empire_State_Building.jpg/640px-NYC_Empire_State_Building.jpg',
-        address: '20 W 34th St, New York, NY 10001',
-        location: {
-          lat: 40.7484405,
-          lng: -73.9878584
-        },
-        creator: 'u1'
-    }
-]
-
 const getPlaceById = async (req, res, next) => {
     const placeId = req.params.placeId
 
@@ -45,22 +30,25 @@ const getPlaceById = async (req, res, next) => {
 const getPlacesByUserId = async (req, res, next) => {
     const userId = req.params.userId
     
-    let places
+    // let places
+    let userWithPlaces
     try {
-        places = await Place.find({ creator: userId })
+        // places = await Place.find({ creator: userId })
+        userWithPlaces = await User.findById(userId).populate('places') // access places property
     } catch (err) {
         const error = new HttpError('Could not find places with that user.', 500)
         return next(error)
     }
 
-    if (!places || places.length === 0) {
+    // if (!places || places.length === 0)
+    if (!userWithPlaces || userWithPlaces.places.length === 0) {
         // return res.status(404).json({ message: 'Could not find a place for the provided user id.' })
         // const error = new Error('Could not find a place for the provided user id.')
         // error.code = 404
         return next(new HttpError('Could not find a places for the provided user id.', 404))
     }
 
-    res.json({ places: places.map(place => place.toObject({ getters: true })) })
+    res.json({ places: userWithPlaces.places.map(place => place.toObject({ getters: true })) })
 }
 
 const createPlace = async (req, res, next) => {
